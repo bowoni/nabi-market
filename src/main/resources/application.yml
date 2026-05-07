@@ -1,11 +1,13 @@
 server:
   port: 8080
 spring:
+  config:
+    import: optional:file:.env[.properties]
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/myapp?serverTimezone=Asia/Seoul
-    username: root
-    password: mysqlDocker123!
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -13,20 +15,48 @@ spring:
       hibernate:
         show_sql: true
         format_sql: true
-
-#server.port: 8080:
-#애플리케이션의 내장 웹 서버인 Tomcat의 포트를 8080으로 설정합니다. 이는 애플리케이션이 기본적으로 8080 포트에서 실행될 것을 의미합니다.
-#spring.datasource.driver-class-name: com.mysql.cj.jdbc.Driver:
-#사용할 데이터베이스 드라이버 클래스를 지정합니다. 여기서는 MySQL 데이터베이스를 사용할 것이며, 그에 따른 JDBC 드라이버를 설정합니다.
-#spring.datasource.url: jdbc:mysql://localhost:3306/myapp?serverTimezone=Asia/Seoul:
-#데이터베이스 연결을 위한 JDBC URL을 설정합니다. **jdbc:mysql://localhost:3306/myapp**는 **localhost**의 3306 포트에 위치한 myapp 데이터베이스에 연결하겠다는 의미입니다. **serverTimezone=Asia/Seoul**은 MySQL 서버의 시간대를 서울로 설정합니다.
-#spring.datasource.username: root:
-#데이터베이스에 연결할 때 사용할 사용자 이름을 지정합니다.
-#spring.datasource.password:
-#데이터베이스에 연결할 때 사용할 비밀번호를 지정합니다.
-#jpa.hibernate.ddl-auto: update:
-#Hibernate의 DDL 자동 생성 기능을 설정합니다. **update**로 설정하면 애플리케이션을 시작할 때 Hibernate가 기존 데이터베이스 스키마와 엔티티 클래스의 정보를 비교하여 필요한 변경을 자동으로 수행합니다.
-#jpa.properties.hibernate.show_sql: true:
-#Hibernate가 실행한 SQL 쿼리를 콘솔에 출력하도록 설정합니다. 개발 및 디버깅 목적으로 유용합니다.
-#jpa.properties.hibernate.format_sql: true:
-#출력된 SQL 쿼리를 포맷팅하여 읽기 쉽게 표시하도록 설정합니다. 쿼리 디버깅 시 도움이 됩니다.
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - profile_nickname
+              - account_email
+            client-name: Kakao
+          naver:
+            client-id: ${NAVER_CLIENT_ID}
+            client-secret: ${NAVER_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - name
+              - email
+            client-name: Naver
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+          naver:
+            authorization-uri: https://nid.naver.com/oauth2.0/authorize
+            token-uri: https://nid.naver.com/oauth2.0/token
+            user-info-uri: https://openapi.naver.com/v1/nid/me
+            user-name-attribute: response
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}

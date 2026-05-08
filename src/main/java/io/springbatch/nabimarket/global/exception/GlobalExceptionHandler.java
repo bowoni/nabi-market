@@ -1,17 +1,20 @@
 package io.springbatch.nabimarket.global.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     // 모든 도메인 예외 통합 처리 (BusinessException을 상속한 것들)
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
+        log.warn("Business exception: {}", e.getErrorCode());
         ErrorCode code = e.getErrorCode();
         return ResponseEntity.status(code.getStatus())
                 .body(ErrorResponse.of(code));
@@ -33,7 +36,7 @@ public class GlobalExceptionHandler {
     // 그 외 모든 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleEtc(Exception e) {
-        // TODO: 로깅 추가 - log.error("Unexpected error", e);
+        log.error("Unexpected error", e);
         return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getStatus())
                 .body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR));
     }

@@ -1,9 +1,6 @@
 package io.springbatch.nabimarket.auth.controller;
 
-import io.springbatch.nabimarket.auth.dto.LoginRequest;
-import io.springbatch.nabimarket.auth.dto.SignupRequest;
-import io.springbatch.nabimarket.auth.dto.SignupResponse;
-import io.springbatch.nabimarket.auth.dto.TokenResponse;
+import io.springbatch.nabimarket.auth.dto.*;
 import io.springbatch.nabimarket.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +31,14 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request
     ) {
         TokenResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponse> refresh(
+            @Valid @RequestBody RefreshRequest request
+    ) {
+        TokenResponse response = authService.refresh(request);
         return ResponseEntity.ok(response);
     }
 }

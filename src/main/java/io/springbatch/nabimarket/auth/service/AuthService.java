@@ -1,10 +1,8 @@
 package io.springbatch.nabimarket.auth.service;
 
-import io.springbatch.nabimarket.auth.dto.LoginRequest;
-import io.springbatch.nabimarket.auth.dto.SignupRequest;
-import io.springbatch.nabimarket.auth.dto.SignupResponse;
-import io.springbatch.nabimarket.auth.dto.TokenResponse;
+import io.springbatch.nabimarket.auth.dto.*;
 import io.springbatch.nabimarket.auth.jwt.JwtTokenProvider;
+import io.springbatch.nabimarket.auth.repository.RefreshTokenRepository;
 import io.springbatch.nabimarket.global.exception.BusinessException;
 import io.springbatch.nabimarket.global.exception.ErrorCode;
 import io.springbatch.nabimarket.user.domain.Provider;
@@ -23,6 +21,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -63,7 +62,36 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
+        refreshTokenRepository.save(user.getId(), refreshToken);
+
         return TokenResponse.of(accessToken, refreshToken);
+    }
+
+    public TokenResponse refresh(RefreshRequest request) {
+        String refreshToken = request.refreshToken();
+        // 1. JWT 자체 검증 (서명, 만료)
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+
+        // 2. Redis에 저장된 토큰 조회
+        String savedToken = refreshTokenRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
+
+        // 3. 일치 여부 검증 - 불일치면 모든 토큰 폐기
+        if (!savedToken.equals(refreshToken)) {
+            refreshTokenRepository.deleteByUserId(userId);
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        // 4. 새 토큰 발급 + Redis 덮어쓰기
+        String newAccessToken = jwtTokenProvider.createAccessToken(userId);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(userId);
+        refreshTokenRepository.save(userId, newRefreshToken);
+
+        return TokenResponse.of(newAccessToken, newRefreshToken);
     }
 
 }

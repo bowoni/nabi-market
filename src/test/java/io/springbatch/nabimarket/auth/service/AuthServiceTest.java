@@ -1,10 +1,8 @@
 package io.springbatch.nabimarket.auth.service;
 
-import io.springbatch.nabimarket.auth.dto.LoginRequest;
-import io.springbatch.nabimarket.auth.dto.SignupRequest;
-import io.springbatch.nabimarket.auth.dto.SignupResponse;
-import io.springbatch.nabimarket.auth.dto.TokenResponse;
+import io.springbatch.nabimarket.auth.dto.*;
 import io.springbatch.nabimarket.auth.jwt.JwtTokenProvider;
+import io.springbatch.nabimarket.auth.repository.RefreshTokenRepository;
 import io.springbatch.nabimarket.global.exception.BusinessException;
 import io.springbatch.nabimarket.global.exception.ErrorCode;
 import io.springbatch.nabimarket.user.domain.Provider;
@@ -24,6 +22,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -38,6 +37,9 @@ class AuthServiceTest {
 
     @Mock
     private JwtTokenProvider jwtTokenProvider;
+
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
 
     @InjectMocks
     private AuthService authService;
@@ -186,6 +188,9 @@ class AuthServiceTest {
         assertThat(response.accessToken()).isEqualTo("access-token");
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
         assertThat(response.tokenType()).isEqualTo("Bearer");
+
+        // refresh token이 Redis에 저장됐는지 검증
+        verify(refreshTokenRepository).save(any(), eq("refresh-token"));
     }
 
     @Test
@@ -252,6 +257,72 @@ class AuthServiceTest {
 
         // then
         assertThat(noUserMessage).isEqualTo(wrongPwMessage);
+    }
+
+    @Test
+    @DisplayName("refresh(): 유효한 refreshToken으로 새 access/refresh 토큰을 발급한다")
+    void refresh_withValidRefreshToken_returnsNewTokens() {
+        // given
+        String oldRefreshToken = "old-refresh-token";
+        RefreshRequest request = new RefreshRequest(oldRefreshToken);
+
+        given(jwtTokenProvider.validateToken(oldRefreshToken)).willReturn(true);
+
+        given(jwtTokenProvider.getUserIdFromToken(oldRefreshToken)).willReturn(1L);
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of(oldRefreshToken));
+
+        given(jwtTokenProvider.createAccessToken(1L)).willReturn("new-access-token");
+        given(jwtTokenProvider.createRefreshToken(1L)).willReturn("new-refresh-token");
+
+        // when
+        TokenResponse response = authService.refresh(request);
+
+        // then
+        assertThat(response.accessToken()).isEqualTo("new-access-token");
+        assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
+        assertThat(response.tokenType()).isEqualTo("Bearer");
+        // Redis 회전 검증 (덮어쓰기로 자동 폐기)
+        verify(refreshTokenRepository).save(1L, "new-refresh-token");
+    }
+
+    @Test
+    @DisplayName("refresh(): 유효하지 않은 refreshToken이면 INVALID_TOKEN 예외 발생")
+    void refresh_withInvalidRefreshToken_throwsException() {
+        // given
+        String refreshToken = "some-valid-jwt";
+        RefreshRequest request = new RefreshRequest(refreshToken);
+
+        given(jwtTokenProvider.validateToken(refreshToken)).willReturn(true);
+        given(jwtTokenProvider.getUserIdFromToken(refreshToken)).willReturn(1L);
+
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> authService.refresh(request))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN));
+    }
+
+    @Test
+    @DisplayName("refresh(): 저장된 토큰과 다르면 INVALID_TOKEN 예외 + 저장 토큰 폐기")
+    void refresh_whenStoredTokenMismatch_throwsExceptionAndDeletesAll() {
+        // given
+        String submittedToken = "old-rotated-token";
+        String currentSavedToken = "different-token-from-rotation";
+        RefreshRequest request = new RefreshRequest(submittedToken);
+
+        given(jwtTokenProvider.validateToken(submittedToken)).willReturn(true);
+        given(jwtTokenProvider.getUserIdFromToken(submittedToken)).willReturn(1L);
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of(currentSavedToken));
+
+        // when & then
+        assertThatThrownBy(() -> authService.refresh(request))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+
+                        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN));
+
+        // 탈취 의심 시나리오 - 저장된 토큰까지 삭제했는지 검증
+        verify(refreshTokenRepository).deleteByUserId(1L);
     }
 
 }

@@ -5,6 +5,8 @@ import io.springbatch.nabimarket.auth.dto.SignupRequest;
 import io.springbatch.nabimarket.auth.dto.SignupResponse;
 import io.springbatch.nabimarket.auth.dto.TokenResponse;
 import io.springbatch.nabimarket.auth.jwt.JwtTokenProvider;
+import io.springbatch.nabimarket.global.exception.BusinessException;
+import io.springbatch.nabimarket.global.exception.ErrorCode;
 import io.springbatch.nabimarket.user.domain.Provider;
 import io.springbatch.nabimarket.user.domain.User;
 import io.springbatch.nabimarket.user.repository.UserRepository;
@@ -120,8 +122,8 @@ class AuthServiceTest {
 
         // when & then
         assertThatThrownBy(() -> authService.signup(validRequest))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("아이디");
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_LOGIN_ID));
 
         // save가 호출되지 않았는지 검증
         verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
@@ -136,8 +138,8 @@ class AuthServiceTest {
 
         // when & then
         assertThatThrownBy(() -> authService.signup(validRequest))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("닉네임");
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_NICKNAME));
     }
 
     @Test
@@ -151,8 +153,8 @@ class AuthServiceTest {
 
         // when & then
         assertThatThrownBy(() -> authService.signup(validRequest))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("전화번호");
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_PHONE_NUMBER));
     }
 
     @Test
@@ -195,8 +197,8 @@ class AuthServiceTest {
 
         // when & then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("아이디 또는 비밀번호");
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS));
     }
 
     @Test
@@ -218,8 +220,8 @@ class AuthServiceTest {
 
         // when & then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("아이디 또는 비밀번호");
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS));
     }
 
     @Test

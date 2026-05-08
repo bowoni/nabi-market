@@ -5,6 +5,8 @@ import io.springbatch.nabimarket.auth.dto.SignupRequest;
 import io.springbatch.nabimarket.auth.dto.SignupResponse;
 import io.springbatch.nabimarket.auth.dto.TokenResponse;
 import io.springbatch.nabimarket.auth.jwt.JwtTokenProvider;
+import io.springbatch.nabimarket.global.exception.BusinessException;
+import io.springbatch.nabimarket.global.exception.ErrorCode;
 import io.springbatch.nabimarket.user.domain.Provider;
 import io.springbatch.nabimarket.user.domain.User;
 import io.springbatch.nabimarket.user.repository.UserRepository;
@@ -40,26 +42,22 @@ public class AuthService {
 
     private void validateDuplicate(SignupRequest request) {
         if (userRepository.existsByLoginId(request.loginId())) {
-            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
         if (userRepository.existsByNickname(request.nickname())) {
-            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
         if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
-            throw new IllegalArgumentException("이미 사용 중인 전화번호입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_PHONE_NUMBER);
         }
     }
 
     public TokenResponse login(LoginRequest request) {
         User user = userRepository.findByLoginId(request.loginId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "아이디 또는 비밀번호가 일치하지 않습니다."
-                ));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new IllegalArgumentException(
-                    "아이디 또는 비밀번호가 일치하지 않습니다."
-            );
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());

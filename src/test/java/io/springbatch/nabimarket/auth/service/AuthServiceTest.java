@@ -325,4 +325,14 @@ class AuthServiceTest {
         verify(refreshTokenRepository).deleteByUserId(1L);
     }
 
+    @Test
+    @DisplayName("logout(): userId의 refresh token을 Redis에서 삭제한다")
+    void logout_deletesRefreshTokenFromRedis() {
+        // when
+        authService.logout(1L);
+
+        // then
+        verify(refreshTokenRepository).deleteByUserId(1L);
+    }
+
 }

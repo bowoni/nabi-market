@@ -1,5 +1,6 @@
 package io.springbatch.nabimarket.global.config;
 
+import io.springbatch.nabimarket.auth.jwt.JwtAuthenticationEntryPoint;
 import io.springbatch.nabimarket.auth.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) {
@@ -27,9 +29,14 @@ public class SecurityConfig {
                     session -> session
                     .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
+            .exceptionHandling(
+                    handler -> handler
+                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+            )
             .authorizeHttpRequests(
                     auth -> auth
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
+                    .requestMatchers("/api/auth/logout").authenticated()
                     .requestMatchers("/api/auth/**").permitAll()
                     .anyRequest().authenticated() // 명시되지 않은 모든 경로 인증 필요
             )

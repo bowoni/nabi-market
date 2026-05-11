@@ -144,24 +144,31 @@ public class AuthService {
         // 3. 일회성 토큰 정리 (재사용 방지)
         verificationCodeRepository.deleteByPhoneNumber(request.phoneNumber());
         oauthSignupSessionRepository.deleteByTempToken(request.tempToken());
-        // 4. 같은 phone number 로 기존 user 조회
-        User user = userRepository.findByPhoneNumber(request.phoneNumber())
-                .map(x -> {
-                    // 기존 사용자: OAuth 정보 갱신 (다음 번엔 폰 인증 없이 바로 로그인)
-                    x.linkOAuthAccount(session.provider(), session.providerId());
-                    return x;
-                })
-                .orElseGet(() -> {
-                    // 신규 사용자: 새 User 생성
-                    return userRepository.save(buildOAuthUser(session, request.phoneNumber()));
+        // 4. 같은 phoneNumber로 기존 User 있으면 거부
+        userRepository.findByPhoneNumber(request.phoneNumber())
+                .ifPresent(existing -> {
+                    throw buildAlreadyRegisteredException(existing.getProvider());
                 });
-
-        // 5. JWT 발급 + Redis 저장
+        // 5. 새 user 생성
+        User user = userRepository.save(buildOAuthUser(session, request.phoneNumber()));
+        // 6. JWT 발급 + Redis 저장
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
         refreshTokenRepository.save(user.getId(), refreshToken);
 
         return TokenResponse.of(accessToken, refreshToken);
+    }
+
+    private BusinessException buildAlreadyRegisteredException(Provider provider) {
+        String message = switch (provider) {
+            case LOCAL -> "이미 일반 회원으로 가입된 계정입니다. 아이디/비밀번호로 로그인해주세요.";
+            case GOOGLE, KAKAO, NAVER ->
+                    String.format("이미 %s로 가입된 계정입니다. %s 계정으로 로그인해주세요.",
+                            provider.getDisplayName(), provider.getDisplayName());
+        };
+        return new
+                BusinessException(ErrorCode.ALREADY_REGISTERED_WITH_DIFFERENT_PROVIDER,
+                message);
     }
 
     private User buildOAuthUser(OAuthSignupSession session, String phoneNumber) {

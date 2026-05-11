@@ -22,6 +22,7 @@ public enum ErrorCode {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "토큰이 유효하지 않습니다."),
     EXPIRED_SIGNUP_SESSION(HttpStatus.BAD_REQUEST, "가입 세션이 만료되었습니다. 다시 시도해주세요."),
     INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "인증 코드가 일치하지 않습니다."),
+    ALREADY_REGISTERED_WITH_DIFFERENT_PROVIDER(HttpStatus.CONFLICT, "이미 다른 방식으로 가입된 계정입니다. 기존 가입 수단으로 로그인해주세요."),
 
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")

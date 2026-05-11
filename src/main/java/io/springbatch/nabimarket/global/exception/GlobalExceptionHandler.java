@@ -17,7 +17,7 @@ public class GlobalExceptionHandler {
         log.warn("Business exception: {}", e.getErrorCode());
         ErrorCode code = e.getErrorCode();
         return ResponseEntity.status(code.getStatus())
-                .body(ErrorResponse.of(code));
+                .body(new ErrorResponse(code.name(), e.getMessage()));
     }
 
     // @Valid 위반 - 첫 번째 필드 에러 메시지를 반환

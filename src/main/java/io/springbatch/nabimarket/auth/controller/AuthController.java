@@ -49,4 +49,20 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/oauth/phone/send-code")
+    public ResponseEntity<Void> sendOAuthVerificationCode(
+            @Valid @RequestBody SendOAuthCodeRequest request
+    ) {
+        authService.sendOAuthVerificationCode(request);
+        return ResponseEntity.noContent().build();   // 204
+    }
+
+    @PostMapping("/oauth/phone/verify")
+    public ResponseEntity<TokenResponse> verifyOAuthPhone(
+            @Valid @RequestBody VerifyOAuthPhoneRequest request
+    ) {
+        TokenResponse response = authService.verifyOAuthPhone(request);
+        return ResponseEntity.ok(response);
+    }
+
 }

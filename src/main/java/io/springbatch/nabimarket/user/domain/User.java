@@ -106,4 +106,10 @@ public class User extends BaseEntity {
     public boolean isAdmin() {
         return this.role == Role.ADMIN;
     }
+
+    public void linkOAuthAccount(Provider provider, String providerId) {
+        this.provider = provider;
+        this.providerId = providerId;
+    }
+
 }

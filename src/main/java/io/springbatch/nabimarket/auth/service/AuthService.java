@@ -2,7 +2,11 @@ package io.springbatch.nabimarket.auth.service;
 
 import io.springbatch.nabimarket.auth.dto.*;
 import io.springbatch.nabimarket.auth.jwt.JwtTokenProvider;
+import io.springbatch.nabimarket.auth.oauth.OAuthSignupSession;
+import io.springbatch.nabimarket.auth.repository.OAuthSignupSessionRepository;
 import io.springbatch.nabimarket.auth.repository.RefreshTokenRepository;
+import io.springbatch.nabimarket.auth.repository.VerificationCodeRepository;
+import io.springbatch.nabimarket.auth.sms.SmsService;
 import io.springbatch.nabimarket.global.exception.BusinessException;
 import io.springbatch.nabimarket.global.exception.ErrorCode;
 import io.springbatch.nabimarket.user.domain.Provider;
@@ -13,6 +17,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -22,6 +29,15 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final OAuthSignupSessionRepository oauthSignupSessionRepository;
+    private final VerificationCodeRepository verificationCodeRepository;
+    private final SmsService smsService;
+
+    private static final SecureRandom secureRandom = new SecureRandom();
+
+    private String generateVerificationCode() {
+        return String.format("%06d", secureRandom.nextInt(1_000_000));
+    }
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -97,6 +113,95 @@ public class AuthService {
     // Redis -> JPA 트랜잭션 영향 X
     public void logout(Long userId) {
         refreshTokenRepository.deleteByUserId(userId);
+    }
+
+    public void sendOAuthVerificationCode(SendOAuthCodeRequest request) {
+        // 1. tempToken 검증 (세션 만료 확인)
+        oauthSignupSessionRepository.findByTempToken(request.tempToken())
+                .orElseThrow(() -> new BusinessException(ErrorCode.EXPIRED_SIGNUP_SESSION));
+
+        // 2. 6자리 코드 생성
+        String code = generateVerificationCode();
+
+        // 3. Redis에 저장 (TTL 5분)
+        verificationCodeRepository.save(request.phoneNumber(), code);
+
+        // 4. SMS 발송 (모킹)
+        smsService.send(request.phoneNumber(), "[나비마켓] 인증번호: " + code);
+    }
+
+    @Transactional
+    public TokenResponse verifyOAuthPhone(VerifyOAuthPhoneRequest request) {
+        // 1. tempToken으로 OAuth 세션 조회
+        OAuthSignupSession session = oauthSignupSessionRepository.findByTempToken(request.tempToken())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE));
+        // 2. 인증 코드 검증
+        String savedCode = verificationCodeRepository.findByPhoneNumber(request.phoneNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE));
+        if (!savedCode.equals(request.code())) {
+            throw new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE);
+        }
+        // 3. 일회성 토큰 정리 (재사용 방지)
+        verificationCodeRepository.deleteByPhoneNumber(request.phoneNumber());
+        oauthSignupSessionRepository.deleteByTempToken(request.tempToken());
+        // 4. 같은 phone number 로 기존 user 조회
+        User user = userRepository.findByPhoneNumber(request.phoneNumber())
+                .map(x -> {
+                    // 기존 사용자: OAuth 정보 갱신 (다음 번엔 폰 인증 없이 바로 로그인)
+                    x.linkOAuthAccount(session.provider(), session.providerId());
+                    return x;
+                })
+                .orElseGet(() -> {
+                    // 신규 사용자: 새 User 생성
+                    return userRepository.save(buildOAuthUser(session, request.phoneNumber()));
+                });
+
+        // 5. JWT 발급 + Redis 저장
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
+        refreshTokenRepository.save(user.getId(), refreshToken);
+
+        return TokenResponse.of(accessToken, refreshToken);
+    }
+
+    private User buildOAuthUser(OAuthSignupSession session, String phoneNumber) {
+        return User.builder()
+                .loginId(generateOAuthLoginId(session))
+                .nickname(generateUniqueNickname(session.name()))
+                .phoneNumber(phoneNumber)
+                .email(session.email())
+                .provider(session.provider())
+                .providerId(session.providerId())
+                // password는 null (OAuth 사용자)
+                .build();
+    }
+
+    private String generateOAuthLoginId(OAuthSignupSession session) {
+        // "google_123" 형태. providerId가 길면 30자에 맞게 잘림 - 어차피 unique 보장됨
+        String raw = session.provider().name().toLowerCase() + "_" + session.providerId();
+        return raw.length() > 30 ? raw.substring(0, 30) : raw;
+    }
+
+    private String generateUniqueNickname(String baseName) {
+        if (baseName == null || baseName.isBlank()) {
+            baseName = "user";
+        }
+        // nickname 50자 제약 고려해 잘라둠
+        if (baseName.length() > 45) {
+            baseName = baseName.substring(0, 45);
+        }
+
+        String candidate = baseName;
+        int suffix = 1;
+        while (userRepository.existsByNickname(candidate)) {
+            candidate = baseName + suffix++;
+            if (suffix > 999) {
+                // 극단적 케이스 - UUID 일부 붙임
+                candidate = baseName + UUID.randomUUID().toString().substring(0, 6);
+                break;
+            }
+        }
+        return candidate;
     }
 
 }

@@ -7,6 +7,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_users_region", columnList = "region_id")
         }
 )
+@SQLRestriction("deleted_at IS NULL")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
 
@@ -71,6 +73,9 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private UserStatus status;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     private User(String loginId, String phoneNumber, String email, String password,
                  String nickname, String profileImageUrl, Provider provider,
@@ -99,6 +104,11 @@ public class User extends BaseEntity {
         if (profileImageUrl != null) this.profileImageUrl = profileImageUrl;
     }
 
+    public void updateMyInfo(String nickname, String email) {
+        if (nickname != null) this.nickname = nickname;
+        if (email != null) this.email = email;
+    }
+
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
@@ -110,6 +120,14 @@ public class User extends BaseEntity {
     public void linkOAuthAccount(Provider provider, String providerId) {
         this.provider = provider;
         this.providerId = providerId;
+    }
+
+    public void markDeleted() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
 }

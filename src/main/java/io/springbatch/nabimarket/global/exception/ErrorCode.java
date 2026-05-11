@@ -25,7 +25,10 @@ public enum ErrorCode {
     ALREADY_REGISTERED_WITH_DIFFERENT_PROVIDER(HttpStatus.CONFLICT, "이미 다른 방식으로 가입된 계정입니다. 기존 가입 수단으로 로그인해주세요."),
 
     // User
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
+    PASSWORD_CHANGE_NOT_ALLOWED(HttpStatus.FORBIDDEN, "비밀번호 변경은 일반 가입 계정만 가능합니다."),
+    INVALID_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "현재 비밀번호가 올바르지 않습니다."),
+    SAME_AS_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "새 비밀번호가 현재 비밀번호와 동일합니다.")
     ;
 
     private final HttpStatus status;

@@ -1,13 +1,13 @@
 package io.springbatch.nabimarket.user.controller;
 
-import io.springbatch.nabimarket.user.dto.UserResponse;
+import io.springbatch.nabimarket.auth.dto.TokenResponse;
+import io.springbatch.nabimarket.user.dto.*;
 import io.springbatch.nabimarket.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/user")
@@ -23,4 +23,45 @@ public class UserController {
         UserResponse response = userService.getMyInfo(userId);
         return ResponseEntity.ok(response);
     }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserResponse> updateMyInfo(
+            @Valid @RequestBody UpdateMyInfoRequest request, @AuthenticationPrincipal Long userId
+    ) {
+        UserResponse response = userService.updateMyInfo(userId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<TokenResponse> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request, @AuthenticationPrincipal Long userId
+    ) {
+        TokenResponse response = userService.changePassword(userId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteMyAccount(
+            @RequestBody DeleteAccountRequest request, @AuthenticationPrincipal Long userId
+    ) {
+        userService.deleteMyAccount(userId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/password/check-current")
+    public ResponseEntity<PasswordCheckResponse> checkCurrentPassword(
+            @Valid @RequestBody PasswordCheckRequest request, @AuthenticationPrincipal Long userId
+    ) {
+        boolean matches = userService.verifyCurrentPassword(userId, request.password());
+        return ResponseEntity.ok(new PasswordCheckResponse(matches));
+    }
+
+    @PostMapping("/me/password/check-new")
+    public ResponseEntity<PasswordCheckResponse> checkNewPassword(
+            @Valid @RequestBody PasswordCheckRequest request, @AuthenticationPrincipal Long userId
+    ) {
+        boolean usable = !userService.isNewPasswordSameAsCurrent(userId, request.password());
+        return ResponseEntity.ok(new PasswordCheckResponse(usable));
+    }
+
 }

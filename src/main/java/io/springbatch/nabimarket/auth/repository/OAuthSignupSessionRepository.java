@@ -62,4 +62,9 @@ public class OAuthSignupSessionRepository {
         }
     }
 
+    public boolean refreshTtl(String tempToken) {
+        Boolean result = redisTemplate.expire(buildKey(tempToken), TTL);
+        return Boolean.TRUE.equals(result);
+    }
+
 }

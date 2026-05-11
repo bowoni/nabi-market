@@ -116,17 +116,17 @@ public class AuthService {
     }
 
     public void sendOAuthVerificationCode(SendOAuthCodeRequest request) {
-        // 1. tempToken 검증 (세션 만료 확인)
-        oauthSignupSessionRepository.findByTempToken(request.tempToken())
-                .orElseThrow(() -> new BusinessException(ErrorCode.EXPIRED_SIGNUP_SESSION));
-
-        // 2. 6자리 코드 생성
+        // 1. tempToken 검증 + TTL 갱신
+        if (!oauthSignupSessionRepository.refreshTtl(request.tempToken())) {
+            throw new BusinessException(ErrorCode.EXPIRED_SIGNUP_SESSION);
+        }
+        // 2. 사전 중복 체크
+        userRepository.findByPhoneNumber(request.phoneNumber()).ifPresent(existing -> {
+            throw buildAlreadyRegisteredException(existing.getProvider());
+        });
+        // 3. 6자리 코드 생성 + Redis에 저장 + SMS 발송 (모킹)
         String code = generateVerificationCode();
-
-        // 3. Redis에 저장 (TTL 5분)
         verificationCodeRepository.save(request.phoneNumber(), code);
-
-        // 4. SMS 발송 (모킹)
         smsService.send(request.phoneNumber(), "[나비마켓] 인증번호: " + code);
     }
 

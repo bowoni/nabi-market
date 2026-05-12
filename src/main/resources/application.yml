@@ -8,6 +8,11 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
   jpa:
     hibernate:
       ddl-auto: update
@@ -68,6 +73,8 @@ logging:
   level:
     org.springframework.web: DEBUG
     org.hibernate.validator: DEBUG
+    org.flywaydb: DEBUG
+    org.springframework.boot.autoconfigure.flyway: DEBUG
 
 springdoc:
   swagger-ui:

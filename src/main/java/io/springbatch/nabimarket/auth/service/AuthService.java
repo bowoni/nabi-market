@@ -56,9 +56,11 @@ public class AuthService {
     }
 
     private void validateDuplicate(SignupRequest request) {
-        if (userRepository.existsByLoginId(request.loginId())) {
+        // 아이디는 탈퇴자 포함 영구 차단
+        if (userRepository.existsByLoginIdIncludingDeleted(request.loginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
+        // 닉네임/전화번호는 활성 사용자만 검증 (탈퇴자 재사용 허용)
         if (userRepository.existsByNickname(request.nickname())) {
             throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }

@@ -31,7 +31,16 @@ public enum ErrorCode {
     SAME_AS_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "새 비밀번호가 현재 비밀번호와 동일합니다."),
 
     // Category
-    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다.")
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
+
+    // Region
+    REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "지역을 찾을 수 없습니다."),
+    INVALID_REGION_LEVEL(HttpStatus.BAD_REQUEST, "동 단위(읍/면/동)만 선택 가능합니다."),
+
+    // Product
+    REGION_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "동네 인증 후 상품 등록이 가능합니다."),
+    INVALID_PRICE(HttpStatus.BAD_REQUEST, "가격이 올바르지 않습니다."),
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다.")
     ;
 
     private final HttpStatus status;

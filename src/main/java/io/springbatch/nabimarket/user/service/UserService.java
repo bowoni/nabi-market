@@ -5,6 +5,9 @@ import io.springbatch.nabimarket.auth.jwt.JwtTokenProvider;
 import io.springbatch.nabimarket.auth.repository.RefreshTokenRepository;
 import io.springbatch.nabimarket.global.exception.BusinessException;
 import io.springbatch.nabimarket.global.exception.ErrorCode;
+import io.springbatch.nabimarket.region.domain.Region;
+import io.springbatch.nabimarket.region.domain.RegionLevel;
+import io.springbatch.nabimarket.region.repository.RegionRepository;
 import io.springbatch.nabimarket.user.domain.Provider;
 import io.springbatch.nabimarket.user.domain.User;
 import io.springbatch.nabimarket.user.dto.ChangePasswordRequest;
@@ -26,6 +29,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final RegionRepository regionRepository;
 
     public UserResponse getMyInfo(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -104,6 +108,22 @@ public class UserService {
             throw new BusinessException(ErrorCode.PASSWORD_CHANGE_NOT_ALLOWED);
         }
         return user;
+    }
+
+    @Transactional
+    public void updateRegion(Long userId, Long regionId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        Region region = regionRepository.findById(regionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REGION_NOT_FOUND));
+
+        // 동(읍/면/동) 단위만 허용 - 시도 단위 등록 방지
+        if (region.getLevel() != RegionLevel.EUPMYEONDONG) {
+            throw new BusinessException(ErrorCode.INVALID_REGION_LEVEL);
+        }
+
+        user.verifyRegion(region);
     }
 
 }

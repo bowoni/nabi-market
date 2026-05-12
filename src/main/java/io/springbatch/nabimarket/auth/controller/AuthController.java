@@ -39,6 +39,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<TokenResponse> refresh(
             @Valid @RequestBody RefreshRequest request
     ) {
@@ -47,12 +48,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal Long userId) {
         authService.logout(userId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/oauth/phone/send-code")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Void> sendOAuthVerificationCode(
             @Valid @RequestBody SendOAuthCodeRequest request
     ) {
@@ -61,6 +64,7 @@ public class AuthController {
     }
 
     @PostMapping("/oauth/phone/verify")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<TokenResponse> verifyOAuthPhone(
             @Valid @RequestBody VerifyOAuthPhoneRequest request
     ) {

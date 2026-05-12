@@ -49,7 +49,7 @@ public class SecurityConfig {
                     auth -> auth
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                    .anyRequest().authenticated() // 기본값: 인증 필요
+                    .anyRequest().permitAll()
             )
             .oauth2Login(oauth2 -> oauth2
                     .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))

@@ -33,7 +33,7 @@ public class User extends BaseEntity {
     @Column(name = "login_id", nullable = false, unique = true, length = 30)
     private String loginId;
 
-    @Column(name = "phone_number", nullable = false, unique = true, length = 20)
+    @Column(name = "phone_number", nullable = false, length = 20)
     private String phoneNumber;
 
     @Column(length = 255)
@@ -42,7 +42,7 @@ public class User extends BaseEntity {
     @Column(length = 255)
     private String password;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String nickname;
 
     @Column(name = "profile_image_url", length = 500)
